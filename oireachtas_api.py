@@ -32,6 +32,9 @@ def filter_bills_sponsored_by(pId):
     leg = requests.get(LEGISLATION_DATASET)
     mem = requests.get(MEMBERS_DATASET)
 
+    leg = leg.json()
+    mem = mem.json()
+
     #print(leg.status_code)
     #print(mem.status_code)
 
@@ -92,4 +95,41 @@ def filter_bills_by_last_updated(since, until):
     :rtype: list
 
     """
-    raise NotImplementedError
+
+    if until == None: until = datetime.today()
+
+    #Make API call for Legislation data.
+    #Use list comprehension to parse through this data, filtering out those entries with updates outside of the specified range
+    #Return the resultant list.
+
+    #GET data from api.oireachtas.ie
+    leg = requests.get(LEGISLATION_DATASET)
+    leg = leg.json()
+    results = leg['results']
+
+    dates = []
+
+    #Parse the lastUpdated value for each bill.
+    dates = [entry['bill']['lastUpdated'] for entry in results]
+
+    #For each date, check if they lie within the range of since and until
+    #First cut off any unnecessary parts of the strings. Then remove any entries outside of range
+    
+
+    for index, date in enumerate(dates):
+        dates[index] = date[:-13]
+        if(dates[index] > until or dates[index] < since):
+            dates.pop(index)
+
+        
+
+
+
+
+    return ret
+
+
+
+
+
+    #raise NotImplementedError
