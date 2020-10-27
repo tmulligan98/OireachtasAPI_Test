@@ -3,6 +3,7 @@
 import json
 import unittest
 from datetime import datetime
+import requests 
 
 from oireachtas_api import LEGISLATION_DATASET, MEMBERS_DATASET
 from oireachtas_api import (
@@ -25,9 +26,11 @@ class TestLoadDataset(unittest.TestCase):
         )
 
     def test_load_from_url(self):
-        loaded = load('https://api.oireachtas.ie/v1/members?limit=50')
+        loaded = requests.get('https://api.oireachtas.ie/v1/members?limit=50')
+        loaded = loaded.json()
         self.assertEqual(
-            len(loaded.get('results', [])),
+            #len(loaded.get('results', [])),
+            len(loaded["results"]),
             len(self.expected['results'])
         )
 

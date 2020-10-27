@@ -14,10 +14,30 @@ import json
 #LEGISLATION_DATASET = 'legislation.json'
 #MEMBERS_DATASET = 'members.json'
 
-LEGISLATION_DATASET = 'https://api.oireachtas.ie/v1/legislation?bill_status=Current,Withdrawn,Enacted,Rejected,Defeated,Lapsed&bill_source=Government,Private%20Member&date_start=1900-01-01&date_end=2099-01-01&limit=50&chamber_id=&lang=en'
-MEMBERS_DATASET = 'https://api.oireachtas.ie/v1/members?date_start=1900-01-01&chamber_id=&date_end=2099-01-01&limit=50'
+#Request and save json data
 
+LEGISLATION_REQUEST = 'https://api.oireachtas.ie/v1/legislation?bill_status=Current,Withdrawn,Enacted,Rejected,Defeated,Lapsed&bill_source=Government,Private%20Member&date_start=1900-01-01&date_end=2099-01-01&limit=50&chamber_id=&lang=en'
+MEMBERS_REQUEST= 'https://api.oireachtas.ie/v1/members?date_start=1900-01-01&chamber_id=&date_end=2099-01-01&limit=50'
+LEGISLATION_DATASET = "leg.json"
+MEMBERS_DATASET = "mem.json"
+
+
+#Get JSON data, and save it to offline files.
+legGet = requests.get(LEGISLATION_REQUEST)
+memGet = requests.get(MEMBERS_REQUEST)
+legGet = legGet.json()
+memGet = memGet.json()
+
+with open("leg.json", 'w') as f:
+    json.dump(legGet, f)
+
+with open("mem.json", 'w') as f:
+    json.dump(memGet, f)
+#Data is now saved.
+
+#Allow the keyword "load" to be used to open files
 load = lambda jfname: loads(open(jfname).read())
+
 
 def filter_bills_sponsored_by(pId):
     """Return bills sponsored by the member with the specified pId
@@ -26,22 +46,8 @@ def filter_bills_sponsored_by(pId):
     :return: dict of bill records
     :rtype: dict
     """
-    #leg = load(LEGISLATION_DATASET)
-    #mem = load(MEMBERS_DATASET)
-
-    leg = requests.get(LEGISLATION_DATASET)
-    mem = requests.get(MEMBERS_DATASET)
-
-    leg = leg.json()
-    mem = mem.json()
-
-    #print(leg.status_code)
-    #print(mem.status_code)
-
-    #text = json.dumps(leg.json(), sort_keys = True, indent=4)
-    #print(text)
-
-
+    leg = load(LEGISLATION_DATASET)
+    mem = load(MEMBERS_DATASET)
 
     ret = []
 
@@ -53,31 +59,35 @@ def filter_bills_sponsored_by(pId):
                 fname = result['member']['fullName']
                 rpId = result['member']['pId']
                 if fname == name and rpId == pId:
+                    print("\n", name, "!")
                     ret.append(res['bill'])
 
 
     
 
-    # #Create list of members
-    # members = [mems for mems in mem['results']['member']]
-    # #Using dict comprehension, now have dictionary of pIds and their respective full names
-    # dictionary = {i["pId"]:i["fullName"] for i in members}
+    #Alternative method using list comprehensions
 
-    
+    # #Create list of members
+    # results = mem["results"]
+    # members = [entry["member"] for entry in results]
+
+    # #Create dictionary of IDs to names
+    # dictionary = {i["pId"]:i["fullName"] for i in members}
+   
     # #Now: Using the name associated to this pId, find the bills this member has done.
     # member_name = dictionary[pId]
 
-    # #With this member name, add all bills with this member name to the ret variable
-    # results = leg["results"]
-    # ret = [bill for bill in leg['results'] if member_name in bill]
-   
+    # bills = []
 
+    # for entry in leg["results"]:
+    #     #p.append(entry["bill"]["sponsors"])
+    #     g = entry["bill"]["sponsors"]
+
+    #     for i in g:
+    #         name = i["sponsor"]["by"]["showAs"]
+    #         if(name == member_name):
+    #             bills.append(entry["bill"])
     
-    
-
-
-
-
 
     
     return ret
@@ -96,40 +106,45 @@ def filter_bills_by_last_updated(since, until):
 
     """
 
+    #Number of characters to be removed (from right to left) from lastUpdated string
+    HOURSMINSSEC = 22
+
+    #If not given an 'Until' time, make one
     if until == None: until = datetime.today()
 
-    #Make API call for Legislation data.
-    #Use list comprehension to parse through this data, filtering out those entries with updates outside of the specified range
+    #Use list comprehension to parse through the leg data, filtering out those entries with updates outside of the specified range
     #Return the resultant list.
 
-    #GET data from api.oireachtas.ie
-    leg = requests.get(LEGISLATION_DATASET)
-    leg = leg.json()
-    results = leg['results']
-
-    dates = []
-
-    #Parse the lastUpdated value for each bill.
-    dates = [entry['bill']['lastUpdated'] for entry in results]
-
-    #For each date, check if they lie within the range of since and until
-    #First cut off any unnecessary parts of the strings. Then remove any entries outside of range
+    try:
     
-
-    for index, date in enumerate(dates):
-        dates[index] = date[:-13]
-        if(dates[index] > until or dates[index] < since):
-            dates.pop(index)
-
+        leg = load(LEGISLATION_DATASET)
         
+        results = leg['results']
 
+        dates = []
+        bills = []
 
+        #Parse the lastUpdated value for each bill.
+        dates = [entry['bill']['lastUpdated'] for entry in results]
+        bills = [entry['bill'] for entry in results]
 
+        #For each date, check if they lie within the range of since and until
+        #First cut off any unnecessary parts of the strings. Then remove any entries outside of range
+        
+        for index, date in enumerate(dates):
+            date = date[:-HOURSMINSSEC]
+            date = datetime.strptime(date, "%Y-%m-%d")
+            dates[index] = date
+            if(dates[index] > until or dates[index] < since):
+                #print("\n")
+                #print(dates[index])
+                #print(bills[index]["billNo"])
+                dates.pop(index)
+                bills.pop(index)
 
-    return ret
+        #print("\n" + str(len(dates)) + " " + str(len(bills)))
 
+        return bills
 
-
-
-
-    #raise NotImplementedError
+    except: 
+        raise NotImplementedError
