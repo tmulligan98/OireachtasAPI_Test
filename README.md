@@ -11,6 +11,6 @@ api endpoints to answer the questions:
 
 This task was assigned by an internship I was applying for at the time.
 
-Update: I have been offered the internship!
+# Update: I have been offered the internship!
 
 [1] https://api.oireachtas.ie/
